@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wound Care Chatbot</title>
+<style>
+    body { font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; }
+    .login-container { background-image: url('beijing1.png'); background-size: cover; background-position: center; width: 100%; height: 100vh; display: flex; justify-content: center; align-items: center; flex-direction: column; }
+    .login-title { color: #800080; font-size: 3.5em; margin-bottom: 20px; }
+    .button-container {
+    width: 300px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    }
+    input[type="text"], input[type="password"], button { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #ddd; border-radius: 5px; }
+    button { background-color: #800080; color: white; border: none; cursor: pointer; }
+    .chat-container { display: none; height: 100vh; display: flex; }
+    .sidebar { background-color: #ccc; width: 20%; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; padding: 10px; box-sizing: border-box; }
+    .calendar-button { width: 100%; padding: 10px; font-size: 1em; background-color: #800080; color: white; border: none; border-radius: 5px; cursor: pointer; box-sizing: border-box; }
+    .chat-section { width: 80%; height: 100%; padding: 20px; box-sizing: border-box; }
+    .messages { height: calc(100% - 50px); overflow-y: auto; padding: 10px; }
+    .message-container { display: flex; align-items: center; margin: 10px 0; }
+    .sender, .chatbot { margin-right: 2px; font-weight: bold; color: #333; font-size: 0.9em; }
+    .message, .chatbot-message {
+        padding: 10px 20px; 
+        border-radius: 10px;
+        display: inline-block;
+        max-width: 80%;
+        min-width: 10%;
+    }
+    .message {
+        background-color: #007bff; 
+        color: white;
+    }
+    .chatbot-message {
+        background-color: #add8e6; 
+        color: #333;
+    }
+    #exitButton {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 10px;
+        background-color: rgb(142, 11, 11);
+        color: white;
+        border: none;
+        cursor: pointer;
+        z-index: 1000;
+        font-size: 1em;
+        border-radius: 5px;
+        width: 100px; 
+    }
+    .input-container { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
+    input[type="text"] { flex-grow: 1; margin-right: 10px; }
+    button.send-button {
+        padding: 10px;
+        text-align: center;
+        width: 100px; 
+    }
+    .choice-button {
+            padding: 5px 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: white;
+            color: black;
+            cursor: pointer;
+    }
+    .choice-button.selected {
+            background-color: #b2fab4; 
+    }
+</style>
+
+</head>
+<body>
+
+<button id="exitButton">Exit</button>
+
+<div class="login-container">
+    <div class="login-title">Wound Care Chatbot</div>
+    <div class="button-container">
+        <input type="text" placeholder="Username" id="username">
+        <input type="password" placeholder="Password" id="password">
+        <button onclick="login()">Login</button>
+        <button onclick="register()">Register</button>
+    </div>
+</div>
+
+<div class="chat-container">
+    <div class="sidebar">
+        <button class="calendar-button" id="resetButton">Reset</button>
+        <button class="calendar-button" id="generalWoundCareButton">General Wound Care</button>
+        <button class="calendar-button">Calendar</button>
+    </div>
+    
+    <div class="chat-section">
+        <div class="messages"></div>
+        <div class="input-container">
+            <input type="text" placeholder="Type your message here..." id="messageInput">
+            <button class="send-button" onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('exitButton').onclick = function() {
+    window.close(); 
+};
+
+function login() {
+    document.querySelector('.login-container').style.display = 'none';
+    document.querySelector('.chat-container').style.display = 'flex';
+
+    
+    var welcomeMessage = "Hello, I am a wound care chatbot. How can I help you today?";
+    typeMessage('Chatbot', welcomeMessage, 'chatbot-message', function() {
+        
+    });
+}
+
+
+document.querySelector('.send-button').onclick = function() {
+    var userInput = document.getElementById('messageInput').value.trim();
+    
+    
+    if (userInput) { 
+        createMessage('You', userInput, 'message'); 
+        
+        
+        if (userInput.toLowerCase().includes("wound")) {
+           
+            var initialMessage = "Before starting, please answer these questions about your wound to determine if you require emergency or professional medical care.";
+            setTimeout(function() { 
+                typeMessage('Chatbot', initialMessage, 'chatbot-message', function() {
+                    
+                    startWoundAssessment();
+                });
+            }, 1000);
+        } else {
+            
+            setTimeout(function() {
+               
+                typeMessage('Chatbot', "I'm not sure how to respond to that. Can you try asking something else?", 'chatbot-message');
+            }, 1000);
+        }
+    }
+    
+   
+    document.getElementById('messageInput').value = '';
+};
+
+
+
+const assessmentFlow = [
+    {
+        question: "Are you experiencing any: Redness, Increased warmth, or Swelling around the wound?",
+        yesAction: emergencyAdvice,
+        noAction: () => nextQuestion(1),
+    },
+    {
+        question: "Are you experiencing any: Bleeding?",
+        yesAction: emergencyAdvice,
+        noAction: () => nextQuestion(2),
+    },
+    {
+        question: "Are you experiencing any: Increased pain?",
+        yesAction: emergencyAdvice,
+        noAction: () => nextQuestion(3),
+    },
+    {
+        question: "Are you experiencing any: Fever of 100.5°F (38°C) or higher, for more than 4 hours?",
+        yesAction: emergencyAdvice,
+        noAction: () => nextQuestion(4),
+    },
+    {
+        question: "Are you experiencing any: Chills?",
+        yesAction: emergencyAdvice,
+        noAction: () => nextQuestion(5),
+    },
+    {
+        question: "Are you experiencing any: Foul odor from the sore?",
+        yesAction: emergencyAdvice,
+        noAction: () => nextQuestion(6),
+    },
+    {
+        question: "Are you experiencing any: Pus coming out of the sore?",
+        yesAction: emergencyAdvice,
+        noAction: () => nextQuestion(7),
+    },
+    {
+        question: "Are you experiencing any: Increase in wound drainage?",
+        yesAction: emergencyAdvice,
+        noAction: () => nextQuestion(8),
+    },
+    {
+        question: "Is your: Wound drainage becoming thick, tan, yellow, or smells bad?",
+        yesAction: emergencyAdvice,
+        noAction: () => nextQuestion(9),
+    },
+    {
+        question: "Is your: Wound is larger or deeper?",
+        yesAction: emergencyAdvice,
+        noAction: () => nextQuestion(10),
+    },
+    {
+        question: "Is your: Wound looking dried out or dark?",
+        yesAction: emergencyAdvice,
+        noAction: askChronicWoundType,
+    }
+];
+
+
+
+
+function startWoundAssessment() {
+    nextQuestion(0); 
+}
+
+function nextQuestion(index) {
+    if (index < assessmentFlow.length) {
+        const flow = assessmentFlow[index];
+        typeMessage('Chatbot', flow.question, 'chatbot-message', () => {
+            addYesNoButtons(() => flow.yesAction(), () => flow.noAction());
+        });
+    } else {
+        
+        askChronicWoundType();
+    }
+}
+
+function addYesNoButtons(yesAction, noAction) {
+    var messagesContainer = document.querySelector('.messages');
+    var lastMessage = messagesContainer.lastElementChild.querySelector('.chatbot-message');
+
+    var yesButton = document.createElement('button');
+    yesButton.textContent = 'Yes';
+    yesButton.className = 'choice-button';
+    yesButton.onclick = function() {
+        yesAction(); 
+        yesButton.style.backgroundColor = '#b2fab4';
+        noButton.style.backgroundColor = 'white';
+    };
+
+    var noButton = document.createElement('button');
+    noButton.textContent = 'No';
+    noButton.className = 'choice-button';
+    noButton.onclick = function() {
+        noAction(); 
+        noButton.style.backgroundColor = '#b2fab4';
+        yesButton.style.backgroundColor = 'white';
+    };
+
+    lastMessage.appendChild(yesButton);
+    lastMessage.appendChild(noButton);
+}
+
+
+function emergencyAdvice() {
+    typeMessage('Chatbot', "Please seek immediate professional or emergency care. Call 911 or your nearest hospital for more information and further direction.", 'chatbot-message');
+}
+
+
+function startWoundAssessment() {
+    nextQuestion(0); 
+}
+
+function nextQuestion(index) {
+    if (index < assessmentFlow.length) {
+        const { question, yesAction, noAction } = assessmentFlow[index];
+        
+        typeMessage('Chatbot', question, 'chatbot-message', () => {
+            addYesNoButtons(() => yesAction(index), () => noAction(index));
+        });
+    } else {
+        askChronicWoundType();
+    }
+}
+
+function askChronicWoundType() {
+    clearButtons();
+   
+}
+
+function askChronicWoundType() {
+    var chatbotResponse = "Please select the type of chronic wound:";
+    var woundOptions = [
+        { 
+            text: 'Vascular Ulcers', 
+            action: () => {
+                createMessage('You', "You selected: Vascular Ulcers", 'message');
+                setTimeout(() => {
+                    askVascularUlcerType(); 
+                }, 500);
+            }
+        },
+        { 
+            text: 'Diabetic Ulcers', 
+            action: () => {
+                createMessage('You', "You selected: Diabetic Ulcers", 'message');
+                setTimeout(askDiabeticUlcerType, 500);
+            }
+        },
+        { 
+            text: 'Pressure Ulcers', 
+            action: () => {
+                createMessage('You', "You selected: Pressure Ulcers", 'message');
+                setTimeout(askPressureUlcerStage, 500);
+            }
+        },
+        { 
+            text: 'Vasculitis Ulcer', 
+            action: () => {
+                createMessage('You', "You selected: Vasculitis Ulcer", 'message');
+                setTimeout(displayVasculitisUlcerInstructions, 500);
+            }
+        }
+    ];
+
+    typeMessage('Chatbot', chatbotResponse, 'chatbot-message', () => {
+        addButtons(woundOptions);
+    });
+}
+
+function askVascularUlcerType() {
+    var chatbotResponse = "Thanks for letting us know that you have a Vascular Ulcer. What is the more specific category of your wound?";
+    var ulcerOptions = [
+        { 
+            text: 'Venous Ulcer', 
+            action: () => {
+                createMessage('You', "You selected: Venous Ulcer", 'message');
+                setTimeout(() => {
+                    askVenousUlcerInfo(); 
+                }, 500);
+            }
+        },
+        { 
+            text: 'Arterial Ulcer', 
+            action: () => {
+                createMessage('You', "You selected: Arterial Ulcer", 'message');
+                setTimeout(() => {
+                    askArterialUlcerInfo();
+                }, 500);
+            }
+        }
+    ];
+
+    typeMessage('Chatbot', chatbotResponse, 'chatbot-message', function() {
+        addButtons(ulcerOptions);
+    });
+}
+
+
+function askVenousUlcerInfo() {
+    var chatbotResponse = "Thanks for letting us know that you have a Venous Ulcer. What would you like information about?";
+    var infoOptions = [
+        { 
+            text: 'Wound care', 
+            action: () => {
+                displayWoundCareInstructions();
+            }
+        },
+        { 
+            text: 'Prevention', 
+            action: () => {
+                displayPreventionInstructions(); 
+                
+            }
+        }
+    ];
+
+    typeMessage('Chatbot', chatbotResponse, 'chatbot-message', function() {
+        addButtons(infoOptions);
+    });
+}
+
+function displayWoundCareInstructions() {
+    var instructionsText = "Here are wound care instructions for your specific wound type:";
+    var instructionsList = [
+        "Clean the wound regularly",
+        "Apply a dressing to the ulcer",
+        "Avoid products that cause skin sensitivity",
+        "Wear compression stockings to prevent blood from pooling in the legs and to speed healing",
+        "Apply an antibacterial ointment or another topical medicine to prevent or treat an infection",
+        "Take oral antibiotic medicines to prevent or treat an infection",
+        "Have allergy testing done",
+        "Wearing a compression wrap to keep blood flowing back up to your heart can also help ulcers heal more quickly.",
+        "In some cases, surgery or a skin graft is needed to close up the opening in the skin. Check with your provider about this procedure."
+    ];
+    
+    typeMessage('Chatbot', instructionsText, 'chatbot-message', function() {
+        addHTMLListInstructions(instructionsList);
+    });
+    speakInstructionsList(instructionsList);
+}
+
+function askArterialUlcerInfo() {
+    var chatbotResponse = "Thanks for letting us know that you have an Arterial Ulcer. What would you like information about?";
+    var infoOptions = [
+        { 
+            text: 'Wound care', 
+            action: () => {
+                displayArterialUlcerWoundCareInstructions();
+            }
+        },
+        { 
+            text: 'Prevention', 
+            action: () => {
+                displayArterialUlcerPreventionInstructions();
+            }
+        }
+    ];
+
+    typeMessage('Chatbot', chatbotResponse, 'chatbot-message', function() {
+        addButtons(infoOptions);
+    });
+}
+
+function displayArterialUlcerWoundCareInstructions() {
+    var instructionsText = "Here are wound care instructions for your specific wound type:";
+    var instructionsList = [
+        "Keep pressure off the leg or foot ulcer. You may need to use crutches or a wheelchair. Or you may wear a cast or a walking boot.",
+        "Follow your doctor's instructions on how to clean the ulcer and change the bandage.",
+        "If your doctor prescribed antibiotics, make sure you are taking them as directed.",
+        "Keep the skin of your legs and feet moisturized.",
+        "Check the skin of your feet daily for small cuts and scrapes.",
+        "Don't walk barefoot.",
+        "Don't soak your feet for long periods.",
+        "Wear shoes that fit well and protect your feet."
+    ];
+
+    typeMessage('Chatbot', instructionsText, 'chatbot-message', function() {
+        addHTMLListInstructions(instructionsList);
+    });
+    speakInstructionsList(instructionsList);
+}
+
+function displayArterialUlcerPreventionInstructions() {
+    var instructionsText = "Here are prevention instructions for your specific wound type:";
+    var instructionsList = [
+        "Don't smoke. Smoking affects blood flow and slows healing.",
+        "Be active. If your doctor says it's okay, walk or ride a bike to improve blood flow in your legs. Swimming is a good choice after your wound heals.",
+        "Lose weight, if you need to.",
+        "Eat heart-healthy foods. These foods include vegetables, fruits, nuts, beans, lean meat, fish, and whole grains. Limit sodium, alcohol, and sugar.",
+        "If your doctor prescribes it, take medicine to treat diabetes. Having diabetes can make it hard for wounds to heal. So try to keep your blood sugar in its target range.",
+        "If your doctor prescribes it, take medicine to treat high blood pressure or high cholesterol."
+    ];
+
+    typeMessage('Chatbot', instructionsText, 'chatbot-message', function() {
+        addHTMLListInstructions(instructionsList);
+    });
+    speakInstructionsList(instructionsList);
+}
+
+function askDiabeticUlcerType() {
+    var chatbotResponse = "Thanks for letting us know that you have a Diabetic Ulcer. What is the more specific category of your wound?";
+    var ulcerOptions = [
+        { 
+            text: 'Neuropathic Ulcers', 
+            action: () => {
+                createMessage('You', "You selected: Neuropathic Ulcers", 'message');
+                setTimeout(() => {
+                    askUlcerInfo('Neuropathic Ulcers');
+                }, 500);
+            }
+        },
+        { 
+            text: 'Ischemic Ulcers', 
+            action: () => {
+                createMessage('You', "You selected: Ischemic Ulcers", 'message');
+                setTimeout(() => {
+                    askUlcerInfo('Ischemic Ulcers');
+                }, 500);
+            }
+        }
+    ];
+
+    typeMessage('Chatbot', chatbotResponse, 'chatbot-message', function() {
+        addButtons(ulcerOptions);
+    });
+}
+
+function askUlcerInfo(ulcerType) {
+    var chatbotResponse = `Thanks for letting us know that you have a ${ulcerType}. What would you like information about?`;
+    var infoOptions = [
+        { 
+            text: 'Wound care', 
+            action: () => {
+                displayUlcerWoundCareInstructions(ulcerType);
+            }
+        },
+        { 
+            text: 'Prevention', 
+            action: () => {
+                displayUlcerPreventionInstructions(ulcerType);
+            }
+        }
+    ];
+
+    typeMessage('Chatbot', chatbotResponse, 'chatbot-message', function() {
+        addButtons(infoOptions);
+    });
+}
+
+function displayUlcerWoundCareInstructions(ulcerType) {
+    var instructionsText = "Here are wound care instructions for your specific wound type:";
+    var instructionsList = [];
+    
+    if (ulcerType === 'Neuropathic Ulcers') {
+        instructionsList = [
+            "Regularly clean the wound and apply clean dressings.",
+            "Offload the affected area to help reduce pressure and promote healing. This may involve using specialized shoes, braces, or casts to redistribute weight.",
+            "If your doctor prescribed medications (antibiotics, analgesics, or growth factors) to control pain, prevent infections, and enhance wound healing, remember to take them as instructed.",
+            "If you have any underlying conditions, such as diabetes or peripheral neuropathy, make sure you are managing them as instructed by your doctor."
+        ];
+    } else if (ulcerType === 'Ischemic Ulcers') {
+        instructionsList = [
+            "Always keep your wound clean and bandaged to prevent infection.",
+            "Your provider will tell you how often you need to change the dressing.",
+            "Keep the dressing and the skin around it dry. Try not to get healthy tissue around the wound too wet. This can soften the healthy tissue, causing the wound to get bigger.",
+            "Before applying a dressing, clean the wound thoroughly according to your provider's instructions.",
+            "You may be able to change your dressing, or family members may be able to help. A visiting nurse may also help you."
+        ];
+    }
+
+    typeMessage('Chatbot', instructionsText, 'chatbot-message', function() {
+        addHTMLListInstructions(instructionsList);
+    });
+    speakInstructionsList(instructionsList);
+}
+
+function displayUlcerPreventionInstructions(ulcerType) {
+    var instructionsText = "Here are prevention instructions for your specific wound type:";
+    var instructionsList = [];
+    
+    if (ulcerType === 'Neuropathic Ulcers') {
+        instructionsList = [
+            "Regular foot inspections, cleaning, and moisturizing can help prevent minor injuries and infections from escalating into ulcers. It is also important to wear comfortable shoes that fit well and provide adequate support.",
+            "If you have diabetes, controlling blood sugar levels can help prevent nerve damage that may lead to neuropathic ulcers.",
+            "Regular check-ups with a healthcare professional can help identify and manage underlying medical conditions that increase ulcer risk.",
+            "Making healthy diet and exercise choices and avoiding smoking can also help reduce risk.",
+            "Taking steps to avoid foot injuries, such as wearing protective footwear and being cautious when walking on uneven surfaces, can help avoid injuring your foot."
+        ];
+    } else if (ulcerType === 'Ischemic Ulcers') {
+        instructionsList = [
+            "Check your feet and legs every day. Check the tops and bottoms, ankles, heels, and between your toes. Look for changes in color and red or sore areas.",
+            "Wear shoes that fit properly and do not rub or put pressure on your feet. Wear socks that fit. Socks that are too big can bunch up in your shoes and cause rubbing of the skin, which can lead to a sore.",
+            "Try not to sit or stand too long in one position.",
+            "Protect your feet from the cold.",
+            "Do not walk barefoot.",
+            "Do not wear compression stockings or wraps unless told to by your provider. These may restrict blood flow.",
+            "Do not soak your feet in hot water.",
+            "Lifestyle changes: Quit smoking. Smoking can lead to narrowed arteries.",
+            "If you have diabetes, keep your blood sugar level under control. This will help you heal faster.",
+            "Exercise as much as you can. Staying active can help with blood flow.",
+            "Eat healthy foods and get plenty of sleep at night.",
+            "Lose weight if you are overweight.",
+            "Manage your blood pressure and cholesterol levels."
+        ];
+    }
+
+    typeMessage('Chatbot', instructionsText, 'chatbot-message', function() {
+        addHTMLListInstructions(instructionsList);
+    });
+    speakInstructionsList(instructionsList);
+}
+
+function askPressureUlcerStage() {
+    var chatbotResponse = "Thanks for letting us know that you have a Pressure Ulcer. What is the stage of your Pressure Ulcer?";
+    var stageOptions = [
+        { 
+            text: 'Stage 1', 
+            action: () => {
+                createMessage('You', "You selected: Stage 1", 'message');
+                setTimeout(askStage1Options, 500); 
+            }
+        },
+        { 
+            text: 'Stage 2', 
+            action: () => {
+                createMessage('You', "You selected: Stage 2", 'message');
+                setTimeout(askStage2Options, 500);
+            }
+        },
+        { 
+            text: 'Stage 3', 
+            action: () => {
+                createMessage('You', "You selected: Stage 3", 'message');
+                setTimeout(handleStage3and4Selection, 500);
+            }
+        },
+        { 
+            text: 'Stage 4', 
+            action: () => {
+                createMessage('You', "You selected: Stage 4", 'message');
+                setTimeout(handleStage3and4Selection, 500);
+            }
+        }
+    ];
+
+    typeMessage('Chatbot', chatbotResponse, 'chatbot-message', function() {
+        addButtons(stageOptions);
+    });
+}
+
+function handleStage1Selection() {
+    createMessage('You', "You selected: Stage 1", 'message');
+    askStage1Options();
+}
+
+function askStage1Options() {
+    var chatbotResponse = "Thanks for letting us know that you are in Stage 1 of Pressure Ulcer. What would you like information about?";
+    var options = [
+        { text: 'Wound care', action: displayStage1WoundCareInstructions },
+        { text: 'Prevention', action: displayStage1PreventionInstructions }
+    ];
+    typeMessage('Chatbot', chatbotResponse, 'chatbot-message', function() {
+        addButtons(options);
+    });
+}
+
+function speakInstructionsList(instructionsList) {
+    for (let instruction of instructionsList) {
+        speak(instruction);
+    }
+}
+
+function displayStage1WoundCareInstructions() {
+    var instructionsText = "Here are wound care instructions for Stage 1 of Pressure Ulcer:";
+    var instructionsList = [
+        "Wash the area gently with mild soap and water.",
+        "Do not use hydrogen peroxide or iodine cleansers. They can damage the skin.",
+        "If needed, use a moisture barrier to protect the area from bodily fluids. Ask your provider what type of moisture barrier to use.",
+        "Keep the sore covered with a special dressing. This protects against infection and helps keep the sore moist so it can heal.",
+        "Talk with your provider about what type of dressing to use. Depending on the size and stage of the sore, you may use a film, gauze, gel, foam, or other type of dressing.",
+        "Avoid slipping or sliding as you move positions. Try to avoid positions that put pressure on your sore.",
+        "If the pressure sore changes or a new one forms, tell your provider.",
+        "Do not massage the skin near or on the ulcer. This can cause more damage."
+    ];
+
+    typeMessage('Chatbot', instructionsText, 'chatbot-message', function() {
+        addHTMLListInstructions(instructionsList);
+    });
+    speakInstructionsList(instructionsList);
+}
+
+function displayStage1PreventionInstructions() {
+    var instructionsText = "Here are prevention instructions for Stage 1 of Pressure Ulcer:";
+    var instructionsList = [
+        "Powder your sheets lightly so your skin doesn't rub on them in bed.",
+        "Care for healthy skin by keeping it clean and moisturized.",
+        "Check your skin for pressure sores every day. Ask your caregiver or someone you trust to check areas you can't see.",
+        "Do not use donut-shaped or ring-shaped cushions. They reduce blood flow to the area, which may cause sores."
+    ];
+
+    typeMessage('Chatbot', instructionsText, 'chatbot-message', function() {
+        addHTMLListInstructions(instructionsList);
+    });
+    speakInstructionsList(instructionsList);
+}
+
+
+function handleStage2Selection() {
+    createMessage('You', "You selected: Stage 2", 'message');
+    askStage2Options();
+}
+
+function askStage2Options() {
+    var chatbotResponse = "Thanks for letting us know that you are in Stage 2 of Pressure Ulcer. What would you like information about?";
+    var options = [
+        { text: 'Wound care', action: displayStage2WoundCareInstructions },
+        { text: 'Prevention', action: displayStage2PreventionInstructions }
+    ];
+    typeMessage('Chatbot', chatbotResponse, 'chatbot-message', function() {
+        addButtons(options);
+    });
+}
+
+
+function displayStage2WoundCareInstructions() {
+    var instructionsText = "Here are wound care instructions for Stage 2 of Pressure Ulcer:";
+    var instructionsList = [
+        "Wash the area with salt water (saline) rinse to remove loose, dead tissue.",
+        "Your provider may recommend a specific cleanser.",
+        "Do not use hydrogen peroxide or iodine cleansers. These can damage the skin.",
+        "Keep the sore covered with a special dressing. This protects against infection and helps keep the sore moist so it can heal.",
+        "Talk with your provider about what type of dressing to use. Depending on the size and stage of the sore, you may use a film, gauze, gel, foam, or other type of dressing.",
+        "Avoid slipping or sliding as you move positions. Try to avoid positions that put pressure on your sore.",
+        "If the pressure sore changes or a new one forms, tell your provider.",
+        "Do not massage the skin near or on the ulcer. This can cause more damage."
+    ];
+
+    typeMessage('Chatbot', instructionsText, 'chatbot-message', function() {
+        addHTMLListInstructions(instructionsList);
+    });
+    speakInstructionsList(instructionsList);
+}
+
+function displayStage2PreventionInstructions() {
+    var instructionsText = "Here are prevention instructions for Stage 2 of Pressure Ulcer:";
+    var instructionsList = [
+        "Powder your sheets lightly so your skin doesn't rub on them in bed.",
+        "Care for healthy skin by keeping it clean and moisturized.",
+        "Check your skin for pressure sores every day. Ask your caregiver or someone you trust to check areas you can't see.",
+        "Do not use donut-shaped or ring-shaped cushions. They reduce blood flow to the area, which may cause sores."
+    ];
+
+    typeMessage('Chatbot', instructionsText, 'chatbot-message', function() {
+        addHTMLListInstructions(instructionsList);
+    });
+    speakInstructionsList(instructionsList);
+}
+
+function handleStage3and4Selection() {
+    var chatbotResponse = "Due to their severity, these need to be cleaned and inspected by a professional. Please consult with a healthcare provider for appropriate care and treatment options.";
+    typeMessage('Chatbot', chatbotResponse, 'chatbot-message');
+}
+
+
+function displayVasculitisUlcerInstructions() {
+    var chatbotResponse = "Thanks for letting us know that you have a Vasculitis Ulcer. Here are wound care instructions for your specific wound type:";
+    var instructionsList = [
+        "Avoid pooling of blood in the large veins of the legs (venous stasis) and exposure to the cold.",
+        "Get bed rest.",
+        "Elevate dependent parts (legs, arms) to increase circulation.",
+        "Keep warm.",
+        "Avoid further trauma to the area.",
+        "Try to have gentle frequent movements, e.g., wiggling your toes.",
+        "Wash the area with salt water (saline) rinse to remove loose, dead tissue.",
+        "Your provider may recommend a specific cleanser.",
+        "Do not use hydrogen peroxide or iodine cleansers. They can damage the skin.",
+        "Keep the sore covered with a special dressing. This protects against infection and helps keep the sore moist so it can heal.",
+        "Talk with your provider about what type of dressing to use. Depending on the size and stage of the sore, you may use a film, gauze, gel, foam, or other type of dressing."
+    ];
+
+    typeMessage('Chatbot', chatbotResponse, 'chatbot-message', function() {
+        addHTMLListInstructions(instructionsList);
+    });
+    speakInstructionsList(instructionsList);
+}
+
+
+
+function addHTMLListInstructions(instructionsList) {
+    var messagesContainer = document.querySelector('.messages');
+    var lastMessage = messagesContainer.lastElementChild.querySelector('.chatbot-message');
+
+    var list = document.createElement('ul');
+    instructionsList.forEach(function(instruction) {
+        var listItem = document.createElement('li');
+        listItem.textContent = instruction;
+        list.appendChild(listItem);
+    });
+    lastMessage.appendChild(list);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+
+function showGeneralWoundCareOptions() {
+    var chatbotResponse = "Select the type of wound care instructions you need:";
+    var careOptions = [
+        {
+            text: 'Removing the old dressing',
+            action: function() {
+                displayGeneralWoundCare('Removing the old dressing');
+            }
+        },
+        {
+            text: 'Cleaning the wound',
+            action: function() {
+                displayGeneralWoundCare('Cleaning the wound');
+            }
+        },
+        {
+            text: 'Changing the dressing',
+            action: function() {
+                displayGeneralWoundCare('Changing the dressing');
+            }
+        }
+    ];
+
+    typeMessage('Chatbot', chatbotResponse, 'chatbot-message', function() {
+        addButtons(careOptions);
+    });
+}
+
+// Function to speak out the instructions
+function speakInstructions(instructionType, instructions) {
+    // Speak out the selected instruction type
+    speak(instructionType);
+    // Iterate through each detail within the selected instruction type
+    for (let detail of instructions[instructionType]) {
+        // Speak out each detail
+        speak(detail);
+    }
+}
+
+//Speak instruction list
+
+
+
+function displayGeneralWoundCare(selectedCareType) {
+    createMessage('You', 'You selected: ' + selectedCareType, 'message');
+
+    
+    var instructions = {
+        'Removing the old dressing': [
+            'Wash your hands thoroughly with soap and warm water before and after each dressing change.',
+            'Put on a pair of non-sterile gloves.',
+            'Carefully remove the tape.',
+            'Remove the old dressing. If it is sticking to your skin, wet it with warm water to loosen it.',
+            'Remove the gauze pads or packing tape from inside your wound.',
+            'Put the old dressing, packing material, and your gloves in a plastic bag. Set the bag aside.',
+        ], 
+        'Cleaning the wound': [
+            'Put on a new pair of non-sterile gloves.',
+            'Use a clean, soft washcloth to gently clean your wound with warm water and soap. Your wound should not bleed much when you are cleaning it. A small amount of blood is alright.',
+            'Rinse your wound with water. Gently pat it dry with a clean towel. Do not rub it dry. In some cases, you can even rinse the wound while showering.',
+            'Check the wound for increased redness, swelling, or a bad odor.',
+            'Pay attention to the color and amount of drainage from your wound. Look for drainage that has become darker or thicker.',
+            'After cleaning your wound, remove your gloves and put them in the plastic bag with the old dressing and gloves.',
+            'Wash your hands again.',
+        ], 
+        'Changing the dressing': [
+            'Put on a new pair of non-sterile gloves.',
+            'Pour saline into a clean bowl. Place gauze pads and any packing tape you will use in the bowl.',
+            'Squeeze the saline from the gauze pads or packing tape until it is no longer dripping.',
+            'Place the gauze pads or packing tape in your wound. Carefully fill in the wound and any spaces under the skin.',
+            'Cover the wet gauze or packing tape with a large dry dressing pad. Use tape or rolled gauze to hold this dressing in place.',
+            'Put all used supplies in the plastic bag. Close it securely, then put it in a second plastic bag, and close that bag securely. Put it in the trash.',
+            'Wash your hands again when you are finished.',
+        ]
+    };
+
+    
+
+    var selectedInstructions = instructions[selectedCareType];
+    if (selectedInstructions) {
+        var instructionsText = "Here are the instructions for " + selectedCareType + ":";
+        typeMessage('Chatbot', instructionsText, 'chatbot-message', function() {
+            addHTMLListInstructions(selectedInstructions);
+        });
+        speakInstructions(selectedCareType,instructions);
+    }
+}
+
+
+
+function addHTMLListInstructions(steps) {
+    var messagesContainer = document.querySelector('.messages');
+    var lastMessage = messagesContainer.lastElementChild.querySelector('.chatbot-message');
+    
+    var list = document.createElement('ul');
+    steps.forEach(function(step) {
+        var listItem = document.createElement('li');
+        listItem.textContent = step;
+        list.appendChild(listItem);
+    });
+    lastMessage.appendChild(list);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    var generalWoundCareButton = document.getElementById('generalWoundCareButton');
+    if (generalWoundCareButton) {
+        generalWoundCareButton.addEventListener('click', function() {
+            showGeneralWoundCareOptions();
+        });
+    }
+
+    var resetButton = document.getElementById('resetButton');
+    if (resetButton) {
+        resetButton.addEventListener('click', function() {
+            resetChat();
+        });
+    }
+});
+
+function resetChat() {
+    var messagesContainer = document.querySelector('.messages');
+    messagesContainer.innerHTML = ''; 
+    var welcomeMessage = "Hello, I am a wound care chatbot. How can I help you today?";
+    typeMessage('Chatbot', welcomeMessage, 'chatbot-message', function() {
+        
+    });
+}
+
+
+function displayPreventionInstructions() {
+    var instructionsText = "Here are prevention instructions for your specific wound type:";
+    var instructionsList = [
+        "Avoid smoking",
+        "Lose weight if you're overweight or obese",
+        "Stay at your ideal weight",
+        "Get plenty of regular exercise",
+        "Move around often",
+        "Raise (elevate) your legs for a short time, especially if you've been standing all day",
+        "Wear compression stockings. These can:"
+    ];
+
+    var nestedListItems = [
+        "Prevent blood from pooling in your legs",
+        "Help you avoid significant swelling",
+        "Reduce your risk for venous ulcers"
+    ];
+    typeMessage('Chatbot', instructionsText, 'chatbot-message', function() {
+    
+        addHTMLListInstructions(instructionsList, nestedListItems);
+    });
+}
+
+function addHTMLListInstructions(listItems, nestedItems = null) {
+    var messagesContainer = document.querySelector('.messages');
+    var lastMessage = messagesContainer.lastElementChild.querySelector('.chatbot-message');
+
+    var listContainer = document.createElement('ul');
+    listItems.forEach(function(item, index) {
+        var listItem = document.createElement('li');
+        listItem.textContent = item;
+        listContainer.appendChild(listItem);
+        if (nestedItems && index === listItems.length - 1) {
+            var nestedList = document.createElement('ul');
+            nestedItems.forEach(function(nestedItem) {
+                var nestedListItem = document.createElement('li');
+                nestedListItem.textContent = nestedItem;
+                nestedList.appendChild(nestedListItem);
+            });
+            listItem.appendChild(nestedList);
+        }
+    });
+    lastMessage.appendChild(listContainer);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+
+
+function addButtons(options, isTwoRows = false, followUpAction, selectedText = "") {
+    var messagesContainer = document.querySelector('.messages');
+    var lastMessage = messagesContainer.lastElementChild.querySelector('.chatbot-message');
+    var buttonsContainer = document.createElement('div');
+    buttonsContainer.style.display = 'flex';
+    buttonsContainer.style.flexDirection = isTwoRows ? 'column' : 'row';
+    buttonsContainer.style.flexWrap = 'wrap';
+    buttonsContainer.style.justifyContent = 'center';
+    buttonsContainer.style.gap = '10px';
+    options.forEach(function(option) {
+        var button = document.createElement('button');
+        button.textContent = option.text;
+        button.style.padding = '5px 10px';
+        button.style.border = '1px solid #ddd';
+        button.style.borderRadius = '5px';
+        button.style.backgroundColor = 'white';
+        button.style.color = 'black';
+        button.style.cursor = 'pointer';
+        button.onclick = function() {
+            button.style.backgroundColor = '#b2fab4';
+            button.disabled = true;
+            option.action();
+            if (selectedText !== "") {
+                createMessage('You', selectedText, 'message'); 
+            }
+            buttonAction(option.text, followUpAction);
+        };
+        buttonsContainer.appendChild(button);
+    });
+    lastMessage.appendChild(buttonsContainer);
+}
+
+function speak(speak,textToSpeak){
+    var msg = new SpeechSynthesisUtterance();
+    msg.text = speaker + "says" +" "+textToSpeak;
+    window.speechSynthesis.speak(msg);
+}
+//function to speak message
+
+function createMessage(sender, text, messageClass) {
+    var messagesContainer = document.querySelector('.messages');
+    var messageContainer = document.createElement('div');
+    messageContainer.classList.add('message-container');
+    
+    var senderSpan = document.createElement('span');
+    senderSpan.classList.add(sender === 'You' ? 'sender' : 'chatbot');
+    senderSpan.textContent = `${sender}: `;
+    
+    var newMessage = document.createElement('div');
+    newMessage.classList.add(messageClass);
+    
+    messageContainer.appendChild(senderSpan);
+    messageContainer.appendChild(newMessage);
+    messagesContainer.appendChild(messageContainer);   
+    messagesContainer.scrollTop = messagesContainer.scrollHeight; 
+    if (sender !== 'You') {
+        typeMessageText(newMessage, text, 0);
+    } else {
+        newMessage.textContent = text;
+    }
+}
+
+
+
+function typeMessage(sender, text, messageClass, callback) {
+    var messagesContainer = document.querySelector('.messages');
+    var messageContainer = document.createElement('div');
+    messageContainer.classList.add('message-container');
+
+    var senderSpan = document.createElement('span');
+    senderSpan.classList.add(sender === 'You' ? 'sender' : 'chatbot');
+    senderSpan.textContent = `${sender}: `;
+
+    var newMessage = document.createElement('div');
+    newMessage.classList.add(messageClass);
+    
+    messageContainer.appendChild(senderSpan);
+    messageContainer.appendChild(newMessage);
+    messagesContainer.appendChild(messageContainer);
+
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+    // Speaking out the message
+    speak(text);
+
+    let index = 0;
+    function typeChar() {
+        if (index < text.length) {
+            newMessage.textContent += text.charAt(index);
+            index++;
+            setTimeout(typeChar, 50); 
+        } else if (callback && typeof callback === "function") {
+            callback(); 
+        }
+    }
+
+    typeChar(); 
+}
+
+// Function to speak out the text
+function speak(text) {
+    var utterance = new SpeechSynthesisUtterance(text);
+    speechSynthesis.speak(utterance);
+}
+
+
+function typeMessageText(element, message, index, callback) {
+    if (index < message.length) {
+        element.textContent += message[index++];
+        setTimeout(function() {
+            typeMessageText(element, message, index, callback);
+        }, 50); 
+    } else {
+        if (callback && typeof callback === "function") {
+            callback();
+        }
+    }
+}
+
+</script>
+</body>
+</html>
